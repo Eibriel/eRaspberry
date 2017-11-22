@@ -15,6 +15,7 @@ import numpy as np
 import requests
 import alsaaudio
 import threading
+import random as rn
 
 from config import Config
 
@@ -36,10 +37,12 @@ print(session_id)
 
 
 class collect_audio (threading.Thread):
-    def __init__(self, all_data, sending_audio):
+    def __init__(self, all_data, sending_audio, sequence_id):
         threading.Thread.__init__(self)
         self.sending_audio = sending_audio
+        self.sequence_id = sequence_id
         self.rate = 16000
+        self.periodsize = 320
         # Open the device in nonblocking capture mode. The last argument could
         # just as well have been zero for blocking mode. Then we could have
         # left out the sleep call in the bottom of the loop
@@ -59,7 +62,7 @@ class collect_audio (threading.Thread):
         # This means that the reads below will return either 320 bytes of data
         # or 0 bytes of data. The latter is possible because we are in
         # nonblocking mode.
-        self.inp.setperiodsize(160)
+        self.inp.setperiodsize(self.periodsize)
         self.all_data = all_data
 
     def run(self):
@@ -81,7 +84,9 @@ class collect_audio (threading.Thread):
                 # Sync all_data
                 threadLock.acquire(True)
                 self.all_data.append(data)
-                print(len(self.all_data))
+                # print(len(self.all_data))
+                if not sending_audio and len(self.all_data) > 100:
+                    del self.all_data[1]
                 threadLock.release()
                 np_data = np.fromstring(data, dtype=np.int16)
                 if np_data.max() > 10000:
@@ -116,6 +121,7 @@ class collect_audio (threading.Thread):
                                 self.sending_audio[0] = False
                                 threadLock.acquire(True)
                                 del self.all_data[:]
+                                self.sequence_id[0] = rn.randint(0, 99999999)
                                 threadLock.release()
                         pass
                 # print (len(data))
@@ -125,12 +131,13 @@ class collect_audio (threading.Thread):
 
 
 class send_audio (threading.Thread):
-    def __init__(self, session_id, cookies, all_data, sending_audio):
+    def __init__(self, session_id, cookies, all_data, sending_audio, sequence_id):
         threading.Thread.__init__(self)
         self.session_id = session_id
         self.cookies = cookies
         self.all_data = all_data
         self.sending_audio = sending_audio
+        self.sequence_id = sequence_id
 
     def run(self):
         headers = {
@@ -167,8 +174,10 @@ class send_audio (threading.Thread):
             # with open('Failed.raw', 'wb') as newFile:
             #    newFile.write(bytes(data_numpy.tostring()))
             # print("Send Audion: Sending {}".format(data_numpy.shape[0]))
-            url = "{}/v1/sessions/{}/recognize?sequence_id=123".format(api_url,
-                                                       self.session_id)
+            url = "{}/v1/sessions/{}/recognize?sequence_id={}"
+            url = url.format(api_url,
+                             self.session_id,
+                             self.sequence_id[0])
             with requests.post(url,
                                headers=headers,
                                data=sound_loader(),
@@ -180,21 +189,29 @@ class send_audio (threading.Thread):
 
 
 class get_text (threading.Thread):
-    def __init__(self, session_id, cookies, sending_audio):
+    def __init__(self, session_id, cookies, sending_audio, sequence_id):
         threading.Thread.__init__(self)
         self.session_id = session_id
         self.cookies = cookies
         self.sending_audio = sending_audio
+        self.sequence_id = sequence_id
+        self.result_index = False
+        self.result_index = 0
 
     def run(self):
         headers = {}
-        url = "{}/v1/sessions/{}/observe_result?interim_results=true&sequence_id=123".format(api_url, self.session_id)
+        url = "{}/v1/sessions/{}/observe_result?interim_results=true&sequence_id={}"
+        url = url.format(api_url,
+                         self.session_id,
+                         self.sequence_id[0])
         while True:
             if not self.sending_audio[0]:
                 continue
             #    # print("Get Text: observe")
             r = None
             r_data = ""
+            self.result_index = False
+            self.result_index = 0
             with requests.get(url,
                               headers=headers,
                               auth=(username, password),
@@ -209,10 +226,14 @@ class get_text (threading.Thread):
                         try:
                             data_json = json.loads(r_data)
                         except:
-                            print ("RDATA")
-                            print (r_data)
-                        if data_json is not None and len(data_json["results"]) > 0:
+                            print("RDATA")
+                            print(r_data)
+                        if "results" not in data_json:
+                            print(data_json)
+                        if data_json is not None and "results" in data_json and len(data_json["results"]) > 0:
                             print(data_json["results"][0]["alternatives"][0]["transcript"])
+                            print(data_json)
+                            self.result_index = data_json["results"][0]["alternatives"]["result_index"]
                         r_data = ""
                     else:
                         if not dec_line.startswith("{"):
@@ -222,12 +243,13 @@ class get_text (threading.Thread):
 threadLock = threading.Lock()
 all_data = []
 sending_audio = [False]
+sequence_id = [rn.randint(0, 99999999)]
 
 # Create new threads
-collect_audio_thread = collect_audio(all_data, sending_audio)
+collect_audio_thread = collect_audio(all_data, sending_audio, sequence_id)
 print("Listening")
-send_audio_thread = send_audio(session_id, cookies, all_data, sending_audio)
-get_text_thread = get_text(session_id, cookies, sending_audio)
+send_audio_thread = send_audio(session_id, cookies, all_data, sending_audio, sequence_id)
+get_text_thread = get_text(session_id, cookies, sending_audio, sequence_id)
 
 collect_audio_thread.start()
 send_audio_thread.start()
