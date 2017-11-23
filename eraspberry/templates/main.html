@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!--<meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="static/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">-->
+    <title>Welcome</title>
+</head>
+<body>
+    <script src="static/jquery-3.2.1.min.js"></script>
+    <p>Mic: <dev id="mic_status"></dev></p>
+    <p>Temp: <dev id="temp_text"></dev></p>
+    <p>User: <dev id="user_text"></dev></p>
+    <p>Watson: <dev id="watson_text"></dev></p>
+<script>
+function get_status() {
+    var jqxhr = $.ajax( {method: "GET",
+                            url: "/status",
+                            dataType: "json",
+                            contentType: 'application/json; charset=utf-8'} )
+            .done(function(msg) {
+                sending_audio = msg["sending_audio"];
+                if (sending_audio) {
+                    $( "#mic_status" ).html("Recording...");
+                    user_text_input = msg["temp_text_input"];
+                    $( "#temp_text" ).html(user_text_input);
+                    // $( "#user_text" ).html("");
+                    // $( "#watson_text" ).html("");
+                } else  {
+                    $( "#mic_status" ).html("");
+                    $( "#temp_text" ).html("");
+                    user_text_input = msg["user_text_input"];
+                    $( "#user_text" ).html(user_text_input);
+                    watson_text_output = msg["watson_text_output"];
+                    $( "#watson_text" ).html(watson_text_output);
+                }
+
+            })
+            .fail(function() {
+                //alert( "error" );
+            })
+            .always(function() {
+                //alert( "complete" );
+        });
+};
+
+setInterval(get_status, 100);
+
+</script>
+</body>
+</html>

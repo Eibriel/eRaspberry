@@ -33,11 +33,14 @@ class session_keeper(threading.Thread):
 
     def run(self):
         while True:
-            if self.session_id["session_id"] is not None:
+            sess_id_threadLock.acquire(True)
+            session_id = self.session_id["session_id"]
+            sess_id_threadLock.release()
+            if session_id is not None:
                 headers = {}
                 url_base = "{}/v1/sessions/{}/recognize"
                 url = url_base.format(api_url,
-                                      self.session_id["session_id"])
+                                      session_id)
                 r = requests.get(url,
                                  headers=headers,
                                  auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD),
@@ -57,10 +60,10 @@ class session_keeper(threading.Thread):
             session = requests.session()
             r = session.post(url, headers=headers, auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD))
             r_json = r.json()
+            sess_id_threadLock.acquire(True)
             self.session_id["session_id"] = r_json["session_id"]
-            self.cookies = {
-                "SESSIONID": r.cookies['SESSIONID']
-            }
+            self.cookies["SESSIONID"] = r.cookies['SESSIONID']
+            sess_id_threadLock.release()
             # print()
             print("New session id: ", self.session_id["session_id"])
 
@@ -206,29 +209,34 @@ class send_audio (threading.Thread):
             # print("Send Audion: Sending {}".format(data_numpy.shape[0]))
             url_base = "{}/v1/sessions/{}/recognize?sequence_id={}&keywords={}&keywords_threshold=0.4"
             #url = "{}/v1/sessions/{}/recognize?sequence_id={}"
+            sess_id_threadLock.acquire(True)
             url = url_base.format(api_url,
-                             self.session_id["session_id"],
-                             self.sequence_id[0],
-                             self.keywords[0])
-            # print(url)
+                                  self.session_id["session_id"],
+                                  self.sequence_id[0],
+                                  self.keywords[0])
+            cookies = dict(self.cookies)
+            sess_id_threadLock.release()
+            # print(cookies)
             with requests.post(url,
                                headers=headers,
                                data=sound_loader(),
                                auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD),
-                               cookies=self.cookies,
+                               cookies=cookies,
                                stream=True) as r:
                 for line in r.iter_lines():
-                    pass  # print (line)
+                    # print (line)
+                    pass
 
 
 class get_text (threading.Thread):
-    def __init__(self, session_id, cookies, sending_audio, sequence_id, user_text_input):
+    def __init__(self, session_id, cookies, sending_audio, sequence_id, user_text_input, temp_text_input):
         threading.Thread.__init__(self)
         self.session_id = session_id
         self.cookies = cookies
         self.sending_audio = sending_audio
         self.sequence_id = sequence_id
         self.user_text_input = user_text_input
+        self.temp_text_input = temp_text_input
         self.final = False
         self.result_index = 0
 
@@ -238,22 +246,26 @@ class get_text (threading.Thread):
         while True:
             if not self.sending_audio[0]:
                 continue
-            #    # print("Get Text: observe")
+            # print("Get Text: observe")
             r = None
             r_data = ""
             self.final = False
             self.result_index = 0
+            sess_id_threadLock.acquire(True)
             url = url_base.format(api_url,
                                   self.session_id["session_id"],
                                   self.sequence_id[0])
+            cookies = dict(self.cookies)
+            sess_id_threadLock.release()
             with requests.get(url,
                               headers=headers,
                               auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD),
-                              cookies=self.cookies,
+                              cookies=cookies,
                               timeout=100,
                               stream=True) as r:
                 for line in r.iter_lines():
                     dec_line = line.decode()
+                    # print (dec_line)
                     if dec_line.startswith("}"):
                         r_data = "{{\n{}\n}}".format(r_data)
                         data_json = None
@@ -265,8 +277,9 @@ class get_text (threading.Thread):
                         if data_json is not None and "results" not in data_json:
                             print(data_json)
                         if data_json is not None and "results" in data_json and len(data_json["results"]) > 0:
-                            # print(data_json["results"][0]["alternatives"][0]["transcript"])
+                            #print(data_json["results"][0]["alternatives"][0]["transcript"])
                             #print(data_json)
+                            self.temp_text_input["text"] = data_json["results"][0]["alternatives"][0]["transcript"]
                             self.result_index = data_json["result_index"]
                             self.final = data_json["results"][0]["final"]
                             if self.final:
@@ -279,9 +292,10 @@ class get_text (threading.Thread):
 
 
 class watson_connection(threading.Thread):
-    def __init__(self, user_text_input, keywords):
+    def __init__(self, user_text_input, watson_text_output, keywords):
         threading.Thread.__init__(self)
         self.user_text_input = user_text_input
+        self.watson_text_output = watson_text_output
         self.keywords = keywords
         self.conversation = ConversationV1(
                 username=Config.WATSON_CON_USERNAME,
@@ -306,6 +320,7 @@ class watson_connection(threading.Thread):
             # print(response)
             for out_text in response["output"]["text"]:
                 print("Agente:{}".format(out_text))
+            self.watson_text_output["text"] = response["output"]["text"]
             response_context = response["context"]
             if "keywords" in response_context:
                 self.keywords[0] = response_context["keywords"]
@@ -314,11 +329,38 @@ class watson_connection(threading.Thread):
             last_user_text_input = self.user_text_input["text"]
 
 
+class save_status(threading.Thread):
+    def __init__(self, sending_audio, user_text_input, temp_text_input, watson_text_output):
+        threading.Thread.__init__(self)
+        self.sending_audio = sending_audio
+        self.user_text_input = user_text_input
+        self.temp_text_input = temp_text_input
+        self.watson_text_output = watson_text_output
+
+    def run(self):
+        # Sending Audio?
+        while True:
+            # print("Status")
+            # print(self.sending_audio[0])
+            data = {
+                "sending_audio": self.sending_audio[0],
+                "user_text_input": self.user_text_input["text"],
+                "temp_text_input": self.temp_text_input["text"],
+                "watson_text_output": self.watson_text_output["text"]
+            }
+            with open("status.json", 'w', encoding='utf-8') as status_file:
+                json.dump(data, status_file, sort_keys=True, indent=4, separators=(',', ': '))
+            time.sleep(0.1)
+
+
 threadLock = threading.Lock()
+sess_id_threadLock = threading.Lock()
 all_data = []
 sending_audio = [False]
 sequence_id = [rn.randint(0, 99999999)]
 user_text_input = {"text": ""}
+temp_text_input = {"text": ""}
+watson_text_output = {"text": ""}
 keywords = ["hola,como,estas,vengo,soy"]
 session_id = {"session_id": None}
 cookies = {}
@@ -341,19 +383,27 @@ get_text_thread = get_text(session_id,
                            cookies,
                            sending_audio,
                            sequence_id,
-                           user_text_input)
+                           user_text_input,
+                           temp_text_input)
 watson_connection_thread = watson_connection(user_text_input,
+                                             watson_text_output,
                                              keywords)
+save_status_thread = save_status(sending_audio,
+                                 user_text_input,
+                                 temp_text_input,
+                                 watson_text_output)
 
 session_keeper_thread.start()
 collect_audio_thread.start()
 send_audio_thread.start()
 get_text_thread.start()
 watson_connection_thread.start()
+save_status_thread.start()
 
 session_keeper_thread.join()
 collect_audio_thread.join()
 send_audio_thread.join()
 get_text_thread.join()
 watson_connection_thread.join()
+save_status_thread.join()
 print("Exiting Main Thread")
