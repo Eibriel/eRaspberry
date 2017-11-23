@@ -72,14 +72,15 @@ class collect_audio (threading.Thread):
         self.sending_audio = sending_audio
         self.sequence_id = sequence_id
         self.rate = 16000
-        self.periodsize = 320
+        self.periodsize = 80
         # Open the device in nonblocking capture mode. The last argument could
         # just as well have been zero for blocking mode. Then we could have
         # left out the sleep call in the bottom of the loop
 
         #
-        self.inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL)
-
+        print(alsaaudio.pcms())
+        card = "default"
+        self.inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL, card)
         # Set attributes: Mono, 16000 Hz, 16 bit little endian samples
         self.inp.setchannels(1)
         self.inp.setrate(self.rate)
@@ -113,12 +114,20 @@ class collect_audio (threading.Thread):
             if l:
                 # Sync all_data
                 threadLock.acquire(True)
-                self.all_data.append(data)
+                if len(data) == 0:
+                    threadLock.release()
+                    continue
+                try:
+                    np_data = np.fromstring(data, dtype=np.int16)
+                except:
+                    # print ("Data error")
+                    threadLock.release()
+                    continue
+                self.all_data.append(bytes(data))
                 # print(len(self.all_data))
                 if not sending_audio and len(self.all_data) > 100:
                     del self.all_data[1]
                 threadLock.release()
-                np_data = np.fromstring(data, dtype=np.int16)
                 if np_data.max() > 10000:
                     # print (silence_last_time - time.time())
                     if time.time() - silence_last_time > 0.01:
