@@ -17,8 +17,6 @@ import alsaaudio
 import threading
 import random as rn
 
-from watson_developer_cloud import ConversationV1
-
 from config import Config
 
 
@@ -297,10 +295,6 @@ class watson_connection(threading.Thread):
         self.user_text_input = user_text_input
         self.watson_text_output = watson_text_output
         self.keywords = keywords
-        self.conversation = ConversationV1(
-                username=Config.WATSON_CON_USERNAME,
-                password=Config.WATSON_CON_PASSWORD,
-                version='2017-11-20')
 
     def run(self):
         last_user_text_input = None
@@ -313,10 +307,26 @@ class watson_connection(threading.Thread):
                 continue
             print("\nUser:{}".format(self.user_text_input["text"]))
             input_obj = {'text': self.user_text_input["text"]}
-            # context_obj = Context(response_context)
-            response = self.conversation.message(workspace_id=Config.WORKSPACE_ID,
-                                                 input=input_obj,
-                                                 context=response_context)
+
+            headers = {
+                'Content-Type': "application/json"
+            }
+            url_base = "https://gateway.watsonplatform.net/conversation/api/v1/workspaces/{}/message?version=2017-05-26"
+            url = url_base.format(Config.WORKSPACE_ID)
+            data = {
+                "input": input_obj,
+                "context": response_context
+            }
+            r = requests.post(url,
+                              headers=headers,
+                              data=json.dumps(data),
+                              auth=(Config.WATSON_CON_USERNAME, Config.WATSON_CON_PASSWORD))
+            try:
+                response = r.json()
+            except:
+                response = None
+            # curl -X POST -u "{username}":"{password}" --header "Content-Type:application/json" --data "{\"input\": {\"text\": \"Hello\"}}" "https://gateway.watsonplatform.net/conversation/api/v1/workspaces/9978a49e-ea89-4493-b33d-82298d3db20d/message?version=2017-05-26"
+
             # print(response)
             for out_text in response["output"]["text"]:
                 print("Agente:{}".format(out_text))
