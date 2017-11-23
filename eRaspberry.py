@@ -21,21 +21,48 @@ from watson_developer_cloud import ConversationV1
 
 from config import Config
 
-headers = {}
-api_url = "https://stream.watsonplatform.net/speech-to-text/api"
-username = Config.WATSON_TTS_USERNAME
-password = Config.WATSON_TTS_PASSWORD
 
-url = "{}/v1/sessions?model=es-ES_BroadbandModel".format(api_url)
-session = requests.session()
-r = session.post(url, headers=headers, auth=(username, password))
-r_json = r.json()
-session_id = r_json["session_id"]
-cookies = {
-    "SESSIONID": r.cookies['SESSIONID']
-}
-# print()
-print(session_id)
+api_url = "https://stream.watsonplatform.net/speech-to-text/api"
+
+
+class session_keeper(threading.Thread):
+    def __init__(self, session_id, cookies):
+        self.session_id = session_id
+        self.cookies = cookies
+        threading.Thread.__init__(self)
+
+    def run(self):
+        while True:
+            if self.session_id["session_id"] is not None:
+                headers = {}
+                url_base = "{}/v1/sessions/{}/recognize"
+                url = url_base.format(api_url,
+                                      self.session_id["session_id"])
+                r = requests.get(url,
+                                 headers=headers,
+                                 auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD),
+                                 cookies=self.cookies)
+                # print (r.text)
+                r_json = None
+                try:
+                    r_json = r.json()
+                except:
+                    pass
+                if r_json is not None and "session" in r_json and r_json["session"]["state"] == "initialized":
+                    time.sleep(10)
+                    continue
+
+            headers = {}
+            url = "{}/v1/sessions?model=es-ES_BroadbandModel".format(api_url)
+            session = requests.session()
+            r = session.post(url, headers=headers, auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD))
+            r_json = r.json()
+            self.session_id["session_id"] = r_json["session_id"]
+            self.cookies = {
+                "SESSIONID": r.cookies['SESSIONID']
+            }
+            # print()
+            print("New session id: ", self.session_id["session_id"])
 
 
 class collect_audio (threading.Thread):
@@ -180,14 +207,14 @@ class send_audio (threading.Thread):
             url_base = "{}/v1/sessions/{}/recognize?sequence_id={}&keywords={}&keywords_threshold=0.4"
             #url = "{}/v1/sessions/{}/recognize?sequence_id={}"
             url = url_base.format(api_url,
-                             self.session_id,
+                             self.session_id["session_id"],
                              self.sequence_id[0],
                              self.keywords[0])
             # print(url)
             with requests.post(url,
                                headers=headers,
                                data=sound_loader(),
-                               auth=(username, password),
+                               auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD),
                                cookies=self.cookies,
                                stream=True) as r:
                 for line in r.iter_lines():
@@ -217,11 +244,11 @@ class get_text (threading.Thread):
             self.final = False
             self.result_index = 0
             url = url_base.format(api_url,
-                                  self.session_id,
+                                  self.session_id["session_id"],
                                   self.sequence_id[0])
             with requests.get(url,
                               headers=headers,
-                              auth=(username, password),
+                              auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD),
                               cookies=self.cookies,
                               timeout=100,
                               stream=True) as r:
@@ -293,8 +320,13 @@ sending_audio = [False]
 sequence_id = [rn.randint(0, 99999999)]
 user_text_input = {"text": ""}
 keywords = ["hola,como,estas,vengo,soy"]
+session_id = {"session_id": None}
+cookies = {}
+
 
 # Create new threads
+session_keeper_thread = session_keeper(session_id,
+                                       cookies)
 collect_audio_thread = collect_audio(all_data,
                                      sending_audio,
                                      sequence_id)
@@ -313,11 +345,13 @@ get_text_thread = get_text(session_id,
 watson_connection_thread = watson_connection(user_text_input,
                                              keywords)
 
+session_keeper_thread.start()
 collect_audio_thread.start()
 send_audio_thread.start()
 get_text_thread.start()
 watson_connection_thread.start()
 
+session_keeper_thread.join()
 collect_audio_thread.join()
 send_audio_thread.join()
 get_text_thread.join()
