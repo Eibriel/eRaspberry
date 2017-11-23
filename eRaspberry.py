@@ -325,9 +325,10 @@ class watson_connection(threading.Thread):
                 response = r.json()
             except:
                 response = None
-            # curl -X POST -u "{username}":"{password}" --header "Content-Type:application/json" --data "{\"input\": {\"text\": \"Hello\"}}" "https://gateway.watsonplatform.net/conversation/api/v1/workspaces/9978a49e-ea89-4493-b33d-82298d3db20d/message?version=2017-05-26"
 
-            # print(response)
+            if "output" not in response:
+                print(response)
+                continue
             for out_text in response["output"]["text"]:
                 print("Agente:{}".format(out_text))
             self.watson_text_output["text"] = response["output"]["text"]
