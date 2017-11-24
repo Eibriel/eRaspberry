@@ -25,6 +25,8 @@
         <p>User: <dev id="user_text"></dev></p>
         <p>Watson: <dev id="watson_text"></dev></p>
     </div>
+    <div id="keyboard">
+    </div>
 <script>
 // Warn if overriding existing method
 if(Array.prototype.equals)
@@ -57,6 +59,7 @@ Array.prototype.equals = function (array) {
 Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 </script>
 <script>
+letters = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
 
 var botui = new BotUI('EibrielBot');
 

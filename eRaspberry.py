@@ -17,6 +17,10 @@ import alsaaudio
 import threading
 import random as rn
 
+
+import smtplib
+from email.mime.text import MIMEText
+
 from config import Config
 
 
@@ -370,6 +374,54 @@ class watson_connection(threading.Thread):
             else:
                 self.keywords[0] = "hola,como,estas,vengo,soy"
             last_user_text_input = self.user_text_input["text"]
+
+            if "send_notification" in response_context:
+                del[response_context["send_notification"]]
+                nombre_anfitrion = response_context.get("nombre_anfitrion")
+                nombre_invitado = response_context.get("nombre_invitado")
+                print("nombre_anfitrion", nombre_anfitrion)
+                print("nombre_invitado", nombre_invitado)
+                msg_to = Config.EMAILS.get(nombre_anfitrion)
+                print("mail anfitrion", msg_to)
+                if msg_to is None:
+                    msg_to = Config.EMAIL_DEFAULT
+                    print("mail default", msg_to)
+                print(msg_to)
+                print("Sending notification!")
+                # Open a plain text file for reading.
+                # For this example, assume that
+                # the text file contains only ASCII characters.
+                if nombre_invitado is not None:
+                    msg_body = "{} está en la puerta!!".format(nombre_invitado)
+                else:
+                    msg_body = "Hay alguien en la puerta!"
+                msg = MIMEText(msg_body)
+
+                msg_from = "mg54_puerta@eibriel.com"
+                if Config.EMAIL_TEST:
+                    msg_to = ["eibriel@eibriel.com"]
+                    print("mail test", msg_to)
+
+                user = Config.EMAIL_USER
+                pwd = Config.EMAIL_PASS
+                msg['Subject'] = msg_body
+                msg['From'] = msg_from
+                msg['To'] = ", ".join(msg_to)
+
+                if not Config.EMAIL_DRY:
+                    # Send the message via our own SMTP server,
+                    # but don't include the
+                    # envelope header.
+                    smtpserver = smtplib.SMTP('mail.eibriel.com', 587)
+                    smtpserver.ehlo()
+                    smtpserver.starttls()
+                    smtpserver.ehlo
+                    smtpserver.login(user, pwd)
+                    smtpserver.sendmail(msg_from, msg_to, msg.as_string())
+                    smtpserver.quit()
+                else:
+                    print(msg)
+
 
 
 class save_status(threading.Thread):
