@@ -64,6 +64,27 @@ pip install -r requirements.txt
 
 Copiar archivo config.py en la misma carpeta donde está eRaspberry.py
 
+```
+class Config:
+    WATSON_TTS_USERNAME = ""
+    WATSON_TTS_PASSWORD = ""
+
+    WATSON_CON_USERNAME = ""
+    WATSON_CON_PASSWORD = ""
+    WORKSPACE_ID = ""
+
+    EMAIL_USER = "mg54_puerta@eibriel.com"
+    EMAIL_PASS = ""
+
+    EMAILS = {
+        "Nombre": ["correo@correo.com"], # El nombre debe coincidir con Watson
+    }
+    EMAIL_DEFAULT = ["correo@correo.com"] # Correo al cual se notificará si el anfitrion no es conocido
+    EMAIL_TEST = True # Set to False to actually send emails
+    EMAIL_DRY = False # Set to False to actually send emails
+
+    MIC_TRESHOLD = 10000 # Numeros mas bajos vuelven el mic mas sensible, mas altos menos sensibles
+```
 
 ## Uso
 
@@ -83,7 +104,7 @@ cd ~/dev/eRaspberry/eRaspberry
 python eRaspberry_server.py
 ```
 
-Acceder a la interfaz web en el navegador usando la dirección: http://0.0.0.0:500/ui
+Acceder a la interfaz web en el navegador usando la dirección: http://0.0.0.0:500/start
 
 ## Actualización
 
