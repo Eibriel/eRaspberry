@@ -36,7 +36,7 @@ then reboot
 
 ## Enable USB Mic
 
-*Cada vez que se inicia el OS*
+**Cada vez que se inicia sesión en el OS**
 
 `nano ~/.asoundrc`
 
@@ -62,7 +62,9 @@ pip install -r requirements.txt
 
 ## Configuración
 
-Copiar archivo config.py en la misma carpeta donde está eRaspberry.py
+Copiar archivo `config.py` en la misma carpeta donde está eRaspberry.py
+
+Estructura del archivo de configuración:
 
 ```
 class Config:
@@ -83,7 +85,7 @@ class Config:
     EMAIL_TEST = True # Set to False to actually send emails
     EMAIL_DRY = False # Set to False to actually send emails
 
-    MIC_TRESHOLD = 10000 # Numeros mas bajos vuelven el mic mas sensible, mas altos menos sensibles
+    MIC_TRESHOLD = 10000 # Numeros mas bajos vuelven el mic mas sensible, mas altos menos sensible
 ```
 
 ## Uso
@@ -93,7 +95,7 @@ Iniciar el servidor con el comando
 ```
 cd ~/dev/eRaspberry/eRaspberry
 . ../venv/bin/activate
-python eRaspberry_server.py
+python eRaspberry.py
 ```
 
 En una nueva pestaña de la terminal iniciar el servidor web con el comando
