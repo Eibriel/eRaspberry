@@ -9,8 +9,16 @@ from flask import render_template
 main = Blueprint('main', __name__)
 
 
+@main.route('/start', methods=['GET'])
+def start():
+    with open('lock', 'w') as f:
+        f.write("lock")
+    return render_template("start.html")
+
+
 @main.route('/ui', methods=['GET'])
 def ui():
+    os.remove("lock")
     return render_template("main.html")
 
 

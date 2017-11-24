@@ -7,7 +7,7 @@
 #
 # To test it out, run it and shout at your microphone:
 
-
+import os
 import sys
 import time
 import json
@@ -137,7 +137,7 @@ class collect_audio (threading.Thread):
                 if not sending_audio and len(self.all_data) > 100:
                     del self.all_data[1]
                 threadLock.release()
-                if np_data.max() > 10000:
+                if np_data.max() > Config.MIC_TRESHOLD:
                     # print (silence_last_time - time.time())
                     if time.time() - silence_last_time > 0.01:
                         # print("No Silence")
@@ -196,6 +196,8 @@ class send_audio (threading.Thread):
 
         while True:
             if not self.sending_audio[0]:
+                continue
+            if os.path.isfile("lock"):
                 continue
 
             def sound_loader():
@@ -322,6 +324,12 @@ class watson_connection(threading.Thread):
         last_user_text_input = None
         response_context = {}
         while True:
+            if os.path.isfile("lock"):
+                self.user_text_input["text"] = ""
+                self.watson_text_output["text"] = []
+                response_context = {}
+                time.sleep(0.1)
+                continue
             if self.user_text_input["text"] == "" or \
               (last_user_text_input is not None and
                last_user_text_input == self.user_text_input["text"]):

@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="refresh" content="600; url=/start" />
     <!--<meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="static/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">-->
@@ -25,7 +26,15 @@
         <p>User: <dev id="user_text"></dev></p>
         <p>Watson: <dev id="watson_text"></dev></p>
     </div>
-    <div id="keyboard">
+    <div id="keyboard" style="display:none;text-align:center;font-size:2em;">
+        <div id="keyboard0"></div>
+        <div id="keyboard1"></div>
+        <div id="keyboard2"></div>
+        <div id="keyboard3"></div>
+        <div id="keyboard4">
+            <span onclick='press_key(" ")'>Space</span>
+            <span onclick='send_keyboard()'>Send</span>
+        </div>
     </div>
 <script>
 // Warn if overriding existing method
@@ -59,7 +68,22 @@ Array.prototype.equals = function (array) {
 Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 </script>
 <script>
-letters = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
+letters = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "123456789"]
+
+function press_key(letter) {
+    console.log(letter);
+    $(".botui-actions-text-input").val( $(".botui-actions-text-input").val() + letter);
+}
+
+function send_keyboard() {
+    $(".botui-actions-text").submit();
+}
+
+for (group in letters) {
+    for (letter in letters[group]) {
+        $("#keyboard"+group).append("<span onclick='press_key(\""+letters[group][letter]+"\")'> "+letters[group][letter].toUpperCase()+" </span>")
+    }
+}
 
 var botui = new BotUI('EibrielBot');
 
@@ -68,7 +92,7 @@ function send_message () {}
 function botui_show_input () {
     botui.action.text({
         action: {
-                placeholder: 'Ingresá tu respuesta aquí'
+                placeholder: 'Habla enviar mensajes...'
             }
         }).then(send_message);
 }
