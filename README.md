@@ -106,6 +106,8 @@ python eRaspberry_server.py
 
 Acceder a la interfaz web en el navegador usando la dirección: http://0.0.0.0:500/start
 
+En Chromium tocar F11 para pasar a modo de pantalla completa
+
 ## Actualización
 
 Cerrar ambos servidores utilizando el comando `Ctrl+C` múltiples veces (hasta que el programa se cierre completamente)
@@ -114,4 +116,7 @@ Cerrar ambos servidores utilizando el comando `Ctrl+C` múltiples veces (hasta q
 cd ~/dev/eRaspberry/eRaspberry
 git pull --rebase
 ```
-Luego volver a iniciar los servidores
+
+Si el archivo `config.py` se modificó reemplazarlo por la nueva versión
+
+Luego volver a iniciar los servidores, y acceder nuevamente a http://0.0.0.0:5000/start
