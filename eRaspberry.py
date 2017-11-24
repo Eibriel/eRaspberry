@@ -56,7 +56,10 @@ class session_keeper(threading.Thread):
             headers = {}
             url = "{}/v1/sessions?model=es-ES_BroadbandModel".format(api_url)
             session = requests.session()
-            r = session.post(url, headers=headers, auth=(Config.WATSON_TTS_USERNAME, Config.WATSON_TTS_PASSWORD))
+            r = session.post(url,
+                             headers=headers,
+                             auth=(Config.WATSON_TTS_USERNAME,
+                                   Config.WATSON_TTS_PASSWORD))
             r_json = r.json()
             sess_id_threadLock.acquire(True)
             self.session_id["session_id"] = r_json["session_id"]
@@ -72,7 +75,7 @@ class collect_audio (threading.Thread):
         self.sending_audio = sending_audio
         self.sequence_id = sequence_id
         self.rate = 16000
-        self.periodsize = 80
+        self.periodsize = 320
         # Open the device in nonblocking capture mode. The last argument could
         # just as well have been zero for blocking mode. Then we could have
         # left out the sleep call in the bottom of the loop
@@ -80,7 +83,9 @@ class collect_audio (threading.Thread):
         #
         print(alsaaudio.pcms())
         card = "default"
-        self.inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, alsaaudio.PCM_NORMAL, card)
+        self.inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE,
+                                 alsaaudio.PCM_NORMAL,
+                                 card)
         # Set attributes: Mono, 16000 Hz, 16 bit little endian samples
         self.inp.setchannels(1)
         self.inp.setrate(self.rate)
@@ -217,10 +222,13 @@ class send_audio (threading.Thread):
             url_base = "{}/v1/sessions/{}/recognize?sequence_id={}&keywords={}&keywords_threshold=0.4"
             #url = "{}/v1/sessions/{}/recognize?sequence_id={}"
             sess_id_threadLock.acquire(True)
+            keywords = self.keywords[0]
+            if keywords.startswith(","):
+                keywords = keywords[1:]
             url = url_base.format(api_url,
                                   self.session_id["session_id"],
                                   self.sequence_id[0],
-                                  self.keywords[0])
+                                  keywords)
             cookies = dict(self.cookies)
             sess_id_threadLock.release()
             # print(cookies)
@@ -306,6 +314,7 @@ class watson_connection(threading.Thread):
         self.keywords = keywords
 
     def run(self):
+        first_time = True
         last_user_text_input = None
         response_context = {}
         while True:
@@ -322,6 +331,19 @@ class watson_connection(threading.Thread):
             }
             url_base = "https://gateway.watsonplatform.net/conversation/api/v1/workspaces/{}/message?version=2017-05-26"
             url = url_base.format(Config.WORKSPACE_ID)
+            if first_time:
+                data = {}
+                first_time = False
+                r = requests.post(url,
+                                  headers=headers,
+                                  data=json.dumps(data),
+                                  auth=(Config.WATSON_CON_USERNAME,
+                                        Config.WATSON_CON_PASSWORD))
+                try:
+                    response = r.json()
+                except:
+                    response = None
+                response_context = response["context"]
             data = {
                 "input": input_obj,
                 "context": response_context
@@ -329,7 +351,8 @@ class watson_connection(threading.Thread):
             r = requests.post(url,
                               headers=headers,
                               data=json.dumps(data),
-                              auth=(Config.WATSON_CON_USERNAME, Config.WATSON_CON_PASSWORD))
+                              auth=(Config.WATSON_CON_USERNAME,
+                                    Config.WATSON_CON_PASSWORD))
             try:
                 response = r.json()
             except:
@@ -380,7 +403,7 @@ sending_audio = [False]
 sequence_id = [rn.randint(0, 99999999)]
 user_text_input = {"text": ""}
 temp_text_input = {"text": ""}
-watson_text_output = {"text": ""}
+watson_text_output = {"text": []}
 keywords = ["hola,como,estas,vengo,soy"]
 session_id = {"session_id": None}
 cookies = {}

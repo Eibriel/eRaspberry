@@ -6,14 +6,111 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="static/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">-->
     <title>Welcome</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="static/botui.min.css" />
+    <link rel="stylesheet" href="static/botui-theme-default.css" />
 </head>
 <body>
+    <script src="https://cdn.jsdelivr.net/vue/2.0.5/vue.min.js"></script>
+    <script src="static/botui.min.js"></script>
     <script src="static/jquery-3.2.1.min.js"></script>
-    <p>Mic: <dev id="mic_status"></dev></p>
-    <p>Temp: <dev id="temp_text"></dev></p>
-    <p>User: <dev id="user_text"></dev></p>
-    <p>Watson: <dev id="watson_text"></dev></p>
+
+    <div class="botui-app-container" id="EibrielBot">
+        <bot-ui></bot-ui>
+    </div>
+
+    <div style="display:none">
+        <p>Mic: <dev id="mic_status"></dev></p>
+        <p>Temp: <dev id="temp_text"></dev></p>
+        <p>User: <dev id="user_text"></dev></p>
+        <p>Watson: <dev id="watson_text"></dev></p>
+    </div>
 <script>
+// Warn if overriding existing method
+if(Array.prototype.equals)
+    console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
+// attach the .equals method to Array's prototype to call it on any array
+Array.prototype.equals = function (array) {
+    // if the other array is a falsy value, return
+    if (!array)
+        return false;
+
+    // compare lengths - can save a lot of time
+    if (this.length != array.length)
+        return false;
+
+    for (var i = 0, l=this.length; i < l; i++) {
+        // Check if we have nested arrays
+        if (this[i] instanceof Array && array[i] instanceof Array) {
+            // recurse into the nested arrays
+            if (!this[i].equals(array[i]))
+                return false;
+        }
+        else if (this[i] != array[i]) {
+            // Warning - two different object instances will never be equal: {x:20} != {x:20}
+            return false;
+        }
+    }
+    return true;
+}
+// Hide method from for-in loops
+Object.defineProperty(Array.prototype, "equals", {enumerable: false});
+</script>
+<script>
+
+var botui = new BotUI('EibrielBot');
+
+function send_message () {}
+
+function botui_show_input () {
+    botui.action.text({
+        action: {
+                placeholder: 'Ingresá tu respuesta aquí'
+            }
+        }).then(send_message);
+}
+
+function botui_auto_input (text) {
+    $(".botui-actions-text-input").val(text);
+}
+
+function botui_show_message (data, human) {
+    //loadingdiv.style.display = "none";
+
+    function send_msg (mm, human) {
+        msg_data = {
+            delay: 500,
+            loading: true,
+            content: mm,
+            human: human
+        }
+        if (human) {
+            msg_data["delay"] = 0;
+            msg_data["loading"] = false;
+        }
+        botui.message.add(msg_data);
+    }
+
+    count = 0
+    for (msg in data["message"]) {
+        m = data["message"][msg]
+        setTimeout(send_msg.bind(null, m, human), count);
+        if (!human) {
+            count += 500;
+        }
+    };
+    setTimeout(botui_show_input, count);
+}
+
+data = {
+    "message": ["¡Hola! Llegaste a MG54", "¿Cómo te llamas?"]
+}
+botui_show_message (data, false);
+//botui_show_message (data, true);
+
+last_user_text_input = ""
+last_watson_text_output = []
+
 function get_status() {
     var jqxhr = $.ajax( {method: "GET",
                             url: "/status",
@@ -22,11 +119,17 @@ function get_status() {
             .done(function(msg) {
                 sending_audio = msg["sending_audio"];
                 if (sending_audio) {
+                    //last_watson_text_output = []
                     $( "#mic_status" ).html("Recording...");
                     user_text_input = msg["temp_text_input"];
                     $( "#temp_text" ).html(user_text_input);
-                    // $( "#user_text" ).html("");
-                    // $( "#watson_text" ).html("");
+                    // User
+                    if (last_user_text_input != user_text_input) {
+                        botui_auto_input (user_text_input);
+                    } else {
+                        botui_auto_input ("Escuchando...");
+                    }
+                    //last_user_text_input = user_text_input;
                 } else  {
                     $( "#mic_status" ).html("");
                     $( "#temp_text" ).html("");
@@ -34,6 +137,23 @@ function get_status() {
                     $( "#user_text" ).html(user_text_input);
                     watson_text_output = msg["watson_text_output"];
                     $( "#watson_text" ).html(watson_text_output);
+                    // User
+                    if (last_user_text_input != user_text_input) {
+                        data = {
+                            "message": [user_text_input]
+                        }
+                        botui_show_message (data, true);
+                        last_user_text_input = user_text_input;
+                    }
+                    // Watson
+                    //console.log(watson_text_output);
+                    if (last_watson_text_output.equals(watson_text_output) === false) {
+                        data = {
+                            "message": watson_text_output
+                        }
+                        botui_show_message (data, false);
+                        last_watson_text_output = watson_text_output;
+                    }
                 }
 
             })

@@ -2,7 +2,7 @@
 Eibriel service for Raspberry Linux
 
 ## Disable BLANK and POWERDOWN
-
+### Method 1
 You need to edit the following file /etc/kbd/config
 
 `sudo nano /etc/kbd/config`
@@ -23,7 +23,26 @@ to
 
 `POWERDOWN_TIME=0`
 
+### Method 2
+`sudo nano /etc/lightdm/lightdm.conf`
+
+In that file, look for:
+`[SeatDefault]`
+
+and insert this line:
+`xserver-command=X -s 0 dpms`
+
 then reboot
+
+## Enable USB Mic
+
+*Cada vez que se inicia el OS*
+
+`nano ~/.asoundrc`
+
+change `card 0` to `card 1` in both lines
+
+*¡Tocar las opciones de sonido reiniciará la configuración y habrá que volver a modificar el archivo!*
 
 ## Installation
 
