@@ -78,7 +78,7 @@ class collect_audio (threading.Thread):
         threading.Thread.__init__(self)
         self.sending_audio = sending_audio
         self.sequence_id = sequence_id
-        self.rate = 16000
+        self.record_rate = 44100
         self.periodsize = 320
         # Open the device in nonblocking capture mode. The last argument could
         # just as well have been zero for blocking mode. Then we could have
@@ -90,9 +90,9 @@ class collect_audio (threading.Thread):
         self.inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE,
                                  alsaaudio.PCM_NORMAL,
                                  card)
-        # Set attributes: Mono, 16000 Hz, 16 bit little endian samples
+        # Set attributes: Mono, 32000 Hz, 16 bit little endian samples
         self.inp.setchannels(1)
-        self.inp.setrate(self.rate)
+        self.inp.setrate(self.record_rate)
         self.inp.setformat(alsaaudio.PCM_FORMAT_S16_LE)
 
         # The period size controls the internal number of frames per period.
@@ -104,6 +104,7 @@ class collect_audio (threading.Thread):
         # nonblocking mode.
         self.inp.setperiodsize(self.periodsize)
         self.all_data = all_data
+        print(dir(self.inp))
 
     def run(self):
         start_time = time.time()
@@ -147,7 +148,7 @@ class collect_audio (threading.Thread):
                     voice_last_time = time.time()
                     if voice_start_time is not None:
                         # print("Voice duration: ", time.time()-voice_start_time)
-                        if time.time()-voice_start_time > 0.2:
+                        if time.time() - voice_start_time > 0.2:
                             if not sending_audio:
                                 print("Start sending audio")
                                 sending_audio = True
@@ -162,7 +163,7 @@ class collect_audio (threading.Thread):
                     silence_last_time = time.time()
                     if silence_start_time is not None:
                         # print("Silence duration: ", time.time()-silence_start_time)
-                        if time.time()-silence_start_time > 1:
+                        if time.time() - silence_start_time > 1:
                             if sending_audio:
                                 print("Stop sending audio")
                                 sending_audio = False
@@ -189,8 +190,9 @@ class send_audio (threading.Thread):
         self.keywords = keywords
 
     def run(self):
+        self.send_rate = 16000
         headers = {
-            'Content-Type': "audio/l16;rate=16000;channels=1;endianness=little-endian",
+            'Content-Type': "audio/l16;rate={};channels=1;endianness=little-endian".format(self.send_rate),
             "Transfer-Encoding": "chunked"
         }
 
@@ -215,6 +217,7 @@ class send_audio (threading.Thread):
                         concat = np.fromstring(data, dtype=np.int16)
                         data_numpy = np.concatenate([data_numpy, concat])
                     data = bytes(data_numpy.tostring())
+                    self.sent_sound = np.concatenate([self.sent_sound, data_numpy])
                     del self.all_data[:]
                     threadLock.release()
                     # print ("Send_Audio: Sending data")
@@ -222,11 +225,8 @@ class send_audio (threading.Thread):
                     if not self.sending_audio[0]:
                         return
 
-            # with open('Failed.raw', 'wb') as newFile:
-            #    newFile.write(bytes(data_numpy.tostring()))
-            # print("Send Audion: Sending {}".format(data_numpy.shape[0]))
             url_base = "{}/v1/sessions/{}/recognize?sequence_id={}&keywords={}&keywords_threshold=0.4"
-            #url = "{}/v1/sessions/{}/recognize?sequence_id={}"
+            # url = "{}/v1/sessions/{}/recognize?sequence_id={}"
             sess_id_threadLock.acquire(True)
             keywords = self.keywords[0]
             if keywords.startswith(","):
@@ -238,6 +238,7 @@ class send_audio (threading.Thread):
             cookies = dict(self.cookies)
             sess_id_threadLock.release()
             # print(cookies)
+            self.sent_sound = np.array([], dtype=np.int16)
             with requests.post(url,
                                headers=headers,
                                data=sound_loader(),
@@ -247,6 +248,9 @@ class send_audio (threading.Thread):
                 for line in r.iter_lines():
                     # print (line)
                     pass
+            with open('sent_sound_{}.raw'.format(time.time()), 'wb') as newFile:
+                newFile.write(bytes(self.sent_sound.tostring()))
+            # print("Send Audion: Sending {}".format(data_numpy.shape[0]))
 
 
 class get_text (threading.Thread):
@@ -298,8 +302,8 @@ class get_text (threading.Thread):
                         if data_json is not None and "results" not in data_json:
                             print(data_json)
                         if data_json is not None and "results" in data_json and len(data_json["results"]) > 0:
-                            #print(data_json["results"][0]["alternatives"][0]["transcript"])
-                            #print(data_json)
+                            # print(data_json["results"][0]["alternatives"][0]["transcript"])
+                            # print(data_json)
                             self.temp_text_input["text"] = data_json["results"][0]["alternatives"][0]["transcript"]
                             self.result_index = data_json["result_index"]
                             self.final = data_json["results"][0]["final"]
@@ -309,7 +313,7 @@ class get_text (threading.Thread):
                     else:
                         if not dec_line.startswith("{"):
                             r_data = "{}\n{}".format(r_data, dec_line)
-                #time.sleep(1)
+                # time.sleep(1)
 
 
 class watson_connection(threading.Thread):
@@ -331,7 +335,7 @@ class watson_connection(threading.Thread):
                 time.sleep(0.1)
                 continue
             if self.user_text_input["text"] == "" or \
-              (last_user_text_input is not None and
+               (last_user_text_input is not None and
                last_user_text_input == self.user_text_input["text"]):
                 time.sleep(0.01)
                 continue
