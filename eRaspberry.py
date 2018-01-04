@@ -78,7 +78,7 @@ class collect_audio (threading.Thread):
         threading.Thread.__init__(self)
         self.sending_audio = sending_audio
         self.sequence_id = sequence_id
-        self.record_rate = 44100
+        self.rate_record = Config.RATE_RECORD
         self.periodsize = 320
         # Open the device in nonblocking capture mode. The last argument could
         # just as well have been zero for blocking mode. Then we could have
@@ -92,7 +92,7 @@ class collect_audio (threading.Thread):
                                  card)
         # Set attributes: Mono, 32000 Hz, 16 bit little endian samples
         self.inp.setchannels(1)
-        self.inp.setrate(self.record_rate)
+        self.inp.setrate(self.rate_record)
         self.inp.setformat(alsaaudio.PCM_FORMAT_S16_LE)
 
         # The period size controls the internal number of frames per period.
@@ -104,7 +104,6 @@ class collect_audio (threading.Thread):
         # nonblocking mode.
         self.inp.setperiodsize(self.periodsize)
         self.all_data = all_data
-        print(dir(self.inp))
 
     def run(self):
         start_time = time.time()
@@ -190,9 +189,9 @@ class send_audio (threading.Thread):
         self.keywords = keywords
 
     def run(self):
-        self.send_rate = 16000
+        self.rate_send = Config.RATE_SEND
         headers = {
-            'Content-Type': "audio/l16;rate={};channels=1;endianness=little-endian".format(self.send_rate),
+            'Content-Type': "audio/l16;rate={};channels=1;endianness=little-endian".format(self.rate_send),
             "Transfer-Encoding": "chunked"
         }
 
