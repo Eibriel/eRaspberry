@@ -60,6 +60,18 @@ cd eRaspberry
 pip install -r requirements.txt
 ```
 
+## Actualización
+```
+git remote set-url origin https://github.com/Eibriel/eRaspberry.git
+git pull
+```
+Agregar las líneas a `config.py`
+```
+RATE_RECORD = 44100 # Mic rateframe
+RATE_SEND = 16000 # Rateframe reported to IBM SST
+```
+
+
 ## Configuración
 
 Copiar archivo `config.py` en la misma carpeta donde está eRaspberry.py
@@ -86,6 +98,8 @@ class Config:
     EMAIL_DRY = False # Set to False to actually send emails
 
     MIC_TRESHOLD = 10000 # Numeros mas bajos vuelven el mic mas sensible, mas altos menos sensible
+    RATE_RECORD = 44100 # Mic rateframe
+    RATE_SEND = 16000 # Rateframe reported to IBM SST
 ```
 
 ## Uso
