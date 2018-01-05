@@ -346,19 +346,19 @@ class watson_connection(threading.Thread):
                     os.remove(status_keyboard_path)
                 else:
                     continue
-            else:
-                if os.path.isfile("lock"):
-                    self.sending_audio[0] = False
-                    self.user_text_input["text"] = ""
-                    self.watson_text_output["text"] = []
-                    response_context = {}
-                    time.sleep(0.1)
-                    continue
-                if self.user_text_input["text"] == "" or \
-                   (last_user_text_input is not None and
-                   last_user_text_input == self.user_text_input["text"]):
-                    time.sleep(0.01)
-                    continue
+            # else:
+            if os.path.isfile("lock"):
+                self.sending_audio[0] = False
+                self.user_text_input["text"] = ""
+                self.watson_text_output["text"] = []
+                response_context = {}
+                time.sleep(0.1)
+                continue
+            if self.user_text_input["text"] == "" or \
+               (last_user_text_input is not None and
+               last_user_text_input == self.user_text_input["text"]):
+                time.sleep(0.01)
+                continue
             print("\nUser:{}".format(self.user_text_input["text"]))
             input_obj = {'text': self.user_text_input["text"]}
 
