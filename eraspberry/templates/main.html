@@ -26,6 +26,9 @@
         <p>User: <dev id="user_text"></dev></p>
         <p>Watson: <dev id="watson_text"></dev></p>
     </div>
+    <div id="keyboard_switch" onclick='switch_keyboard()' style="text-align:center;margin-top:50px;font-size:2em;">
+        <p>USAR TECLADO</p>
+    </div>
     <div id="keyboard" style="display:none;text-align:center;font-size:2em;">
         <div id="keyboard0"></div>
         <div id="keyboard1"></div>
@@ -33,6 +36,9 @@
         <div id="keyboard3"></div>
         <div id="keyboard4">
             <span onclick='press_key(" ")'>Space</span>
+            <span onclick='del_keyboard()'>Del</span>
+        </div>
+        <div id="keyboard4">
             <span onclick='send_keyboard()'>Send</span>
         </div>
     </div>
@@ -69,6 +75,13 @@ Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 </script>
 <script>
 letters = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "123456789"]
+is_using_keyboard = false;
+
+function switch_keyboard(){
+    using_keyboard();
+    $("#keyboard").css( 'display', 'block');
+    $("#keyboard_switch").css( 'display', 'none');
+}
 
 function press_key(letter) {
     console.log(letter);
@@ -76,7 +89,64 @@ function press_key(letter) {
 }
 
 function send_keyboard() {
-    $(".botui-actions-text").submit();
+    //$(".botui-actions-text").submit();
+    message = $(".botui-actions-text-input").val();
+    console.log(message);
+    arr = {
+        "message": message
+    }
+    var jqxhr = $.ajax( {method: "POST",
+                            url: "/message",
+                            data: arr,
+                            dataType: "json"})
+                            //contentType: 'application/json; charset=utf-8'} )
+            .done(function(msg) {
+                console.log("ok");
+            })
+            .fail(function() {
+                //alert( "error" );
+                console.log("error");
+            })
+            .always(function() {
+                //alert( "complete" );
+        });
+
+}
+
+function del_keyboard(){
+    $(".botui-actions-text-input").val( $(".botui-actions-text-input").val().slice(0, -1));
+}
+
+function using_mic(){
+    var jqxhr = $.ajax( {method: "GET",
+                            url: "/using_mic",
+                            dataType: "json",
+                            contentType: 'application/json; charset=utf-8'} )
+            .done(function(msg) {
+                is_using_keyboard = false;
+            })
+            .fail(function() {
+                //alert( "error" );
+            })
+            .always(function() {
+                //alert( "complete" );
+        });
+}
+
+function using_keyboard(){
+    var jqxhr = $.ajax( {method: "GET",
+                            url: "/using_keyboard",
+                            dataType: "json",
+                            contentType: 'application/json; charset=utf-8'} )
+            .done(function(msg) {
+                is_using_keyboard = true;
+            })
+            .fail(function() {
+                //alert( "error" );
+            })
+            .always(function() {
+                //alert( "complete" );
+        });
 }
 
 for (group in letters) {
@@ -92,7 +162,8 @@ function send_message () {}
 function botui_show_input () {
     botui.action.text({
         action: {
-                placeholder: 'Habla enviar mensajes...'
+                //placeholder: 'Habla para enviar mensajes...'
+                placeholder: ''
             }
         }).then(send_message);
 }
@@ -154,7 +225,9 @@ function get_status() {
                     if (last_user_text_input != user_text_input) {
                         botui_auto_input (user_text_input);
                     } else {
-                        botui_auto_input ("Escuchando...");
+                        if (!is_using_keyboard) {
+                            botui_auto_input ("Escuchando...");
+                        }
                     }
                     //last_user_text_input = user_text_input;
                 } else  {
@@ -165,7 +238,8 @@ function get_status() {
                     watson_text_output = msg["watson_text_output"];
                     $( "#watson_text" ).html(watson_text_output);
                     // User
-                    if (last_user_text_input != user_text_input) {
+                    if (last_user_text_input != user_text_input && user_text_input != "") {
+                        console.log(user_text_input);
                         data = {
                             "message": [user_text_input]
                         }
@@ -173,8 +247,9 @@ function get_status() {
                         last_user_text_input = user_text_input;
                     }
                     // Watson
-                    //console.log(watson_text_output);
+                    // console.log(watson_text_output);
                     if (last_watson_text_output.equals(watson_text_output) === false) {
+                        console.log("LALA:" + watson_text_output);
                         data = {
                             "message": watson_text_output
                         }
@@ -192,8 +267,18 @@ function get_status() {
         });
 };
 
-setInterval(get_status, 100);
+function fix_scroll(){
+    $(".botui-container").scrollTop(1000);
+    $("#EibrielBot").css( 'height', '300px' );
+}
 
+setInterval(get_status, 100);
+setInterval(fix_scroll, 100);
+
+$("#keyboard").css( 'cursor', 'pointer' );
+$("#keyboard_switch").css( 'cursor', 'pointer' );
+using_mic();
+switch_keyboard();
 </script>
 </body>
 </html>

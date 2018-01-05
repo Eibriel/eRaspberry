@@ -102,6 +102,17 @@ class Config:
     RATE_SEND = 16000 # Rateframe reported to IBM SST
 ```
 
+Valores posibles para los rates:
+
+- 8000
+- 11025
+- 16000
+- 22050
+- 32000
+- 44100
+- 48000
+
+
 ## Uso
 
 Iniciar el servidor con el comando

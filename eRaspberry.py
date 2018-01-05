@@ -79,7 +79,7 @@ class collect_audio (threading.Thread):
         self.sending_audio = sending_audio
         self.sequence_id = sequence_id
         self.rate_record = Config.RATE_RECORD
-        self.periodsize = 320
+        self.periodsize = 160
         # Open the device in nonblocking capture mode. The last argument could
         # just as well have been zero for blocking mode. Then we could have
         # left out the sleep call in the bottom of the loop
@@ -197,8 +197,13 @@ class send_audio (threading.Thread):
 
         while True:
             if not self.sending_audio[0]:
+                time.sleep(1)
                 continue
             if os.path.isfile("lock"):
+                time.sleep(1)
+                continue
+            if os.path.isfile("using_keyboard"):
+                time.sleep(1)
                 continue
 
             def sound_loader():
@@ -208,7 +213,7 @@ class send_audio (threading.Thread):
                     if len(self.all_data) == 0:
                         threadLock.release()
                         # print("Send Audio: Waiting for data")
-                        time.sleep(1)
+                        time.sleep(0.1)
                         continue
                     # Clean all_data
                     data_numpy = np.array([], dtype=np.int16)
@@ -316,8 +321,9 @@ class get_text (threading.Thread):
 
 
 class watson_connection(threading.Thread):
-    def __init__(self, user_text_input, watson_text_output, keywords):
+    def __init__(self, sending_audio, user_text_input, watson_text_output, keywords):
         threading.Thread.__init__(self)
+        self.sending_audio = sending_audio
         self.user_text_input = user_text_input
         self.watson_text_output = watson_text_output
         self.keywords = keywords
@@ -327,17 +333,32 @@ class watson_connection(threading.Thread):
         last_user_text_input = None
         response_context = {}
         while True:
-            if os.path.isfile("lock"):
-                self.user_text_input["text"] = ""
-                self.watson_text_output["text"] = []
-                response_context = {}
-                time.sleep(0.1)
-                continue
-            if self.user_text_input["text"] == "" or \
-               (last_user_text_input is not None and
-               last_user_text_input == self.user_text_input["text"]):
-                time.sleep(0.01)
-                continue
+            if os.path.isfile("using_keyboard"):
+                status_keyboard_path = "status_keyboard.json"
+                if os.path.exists(status_keyboard_path):
+                    with open(status_keyboard_path, encoding='utf-8') as data_file:
+                        try:
+                            data = json.load(data_file)
+                        except:
+                            continue
+                    print(status_keyboard_path)
+                    self.user_text_input["text"] = data["message"]
+                    os.remove(status_keyboard_path)
+                else:
+                    continue
+            else:
+                if os.path.isfile("lock"):
+                    self.sending_audio[0] = False
+                    self.user_text_input["text"] = ""
+                    self.watson_text_output["text"] = []
+                    response_context = {}
+                    time.sleep(0.1)
+                    continue
+                if self.user_text_input["text"] == "" or \
+                   (last_user_text_input is not None and
+                   last_user_text_input == self.user_text_input["text"]):
+                    time.sleep(0.01)
+                    continue
             print("\nUser:{}".format(self.user_text_input["text"]))
             input_obj = {'text': self.user_text_input["text"]}
 
@@ -432,6 +453,7 @@ class watson_connection(threading.Thread):
                     smtpserver.quit()
                 else:
                     print(msg)
+            # time.sleep(1.0)
 
 
 
@@ -456,6 +478,8 @@ class save_status(threading.Thread):
             }
             with open("status.json", 'w', encoding='utf-8') as status_file:
                 json.dump(data, status_file, sort_keys=True, indent=4, separators=(',', ': '))
+            #if len(self.watson_text_output["text"]) > 0:
+            #    lala()
             time.sleep(0.1)
 
 
@@ -491,7 +515,8 @@ get_text_thread = get_text(session_id,
                            sequence_id,
                            user_text_input,
                            temp_text_input)
-watson_connection_thread = watson_connection(user_text_input,
+watson_connection_thread = watson_connection(sending_audio,
+                                             user_text_input,
                                              watson_text_output,
                                              keywords)
 save_status_thread = save_status(sending_audio,
