@@ -30,18 +30,29 @@
         <p>USAR TECLADO</p>
     </div>
     <div id="keyboard" style="display:none;text-align:center;font-size:2em;">
-        <div id="keyboard0"></div>
-        <div id="keyboard1"></div>
-        <div id="keyboard2"></div>
-        <div id="keyboard3"></div>
-        <div id="keyboard4">
-            <span onclick='press_key(" ")'>Space</span>
-            <span onclick='del_keyboard()'>Del</span>
+        <div class="keyrow" id="keyboard0"></div>
+        <div class="keyrow" id="keyboard1"></div>
+        <div class="keyrow" id="keyboard2"></div>
+        <div class="keyrow" id="keyboard3"></div>
+        <div class="keyrow" id="keyboard4">
+            <span class="key" onclick='press_key(" ")'>Space</span>
+            <span class="key" onclick='del_keyboard()'>Del</span>
+            <span class="key" onclick='send_keyboard()'>Send</span>
         </div>
-        <div id="keyboard4">
-            <span onclick='send_keyboard()'>Send</span>
-        </div>
+        <!--<div id="keyboard4">
+        </div>-->
     </div>
+<style>
+.key {
+    background-color: #4fc3a4;
+    margin: 3px;
+    border: solid 2px #85efd2;
+}
+
+.keyrow {
+    margin: 5px;
+}
+</style>
 <script>
 // Warn if overriding existing method
 if(Array.prototype.equals)
@@ -74,7 +85,7 @@ Array.prototype.equals = function (array) {
 Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 </script>
 <script>
-letters = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "123456789"]
+letters = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "1234567890"]
 is_using_keyboard = false;
 
 function switch_keyboard(){
@@ -151,7 +162,7 @@ function using_keyboard(){
 
 for (group in letters) {
     for (letter in letters[group]) {
-        $("#keyboard"+group).append("<span onclick='press_key(\""+letters[group][letter]+"\")'> "+letters[group][letter].toUpperCase()+" </span>")
+        $("#keyboard"+group).append("<span class=\"key\" onclick='press_key(\""+letters[group][letter]+"\")'> "+letters[group][letter].toUpperCase()+" </span>")
     }
 }
 
