@@ -476,6 +476,8 @@ class save_status(threading.Thread):
                 "temp_text_input": self.temp_text_input["text"],
                 "watson_text_output": self.watson_text_output["text"]
             }
+            if os.path.isfile("using_keyboard"):
+                data["sending_audio"] = False
             with open("status.json", 'w', encoding='utf-8') as status_file:
                 json.dump(data, status_file, sort_keys=True, indent=4, separators=(',', ': '))
             #if len(self.watson_text_output["text"]) > 0:
