@@ -499,18 +499,20 @@ cookies = {}
 
 
 # Create new threads
-session_keeper_thread = session_keeper(session_id,
-                                       cookies)
-collect_audio_thread = collect_audio(all_data,
-                                     sending_audio,
-                                     sequence_id)
-print("Listening")
-send_audio_thread = send_audio(session_id,
-                               cookies,
-                               all_data,
-                               sending_audio,
-                               sequence_id,
-                               keywords)
+if 0:
+    session_keeper_thread = session_keeper(session_id,
+                                           cookies)
+    collect_audio_thread = collect_audio(all_data,
+                                         sending_audio,
+                                         sequence_id)
+    print("Listening")
+
+    send_audio_thread = send_audio(session_id,
+                                   cookies,
+                                   all_data,
+                                   sending_audio,
+                                   sequence_id,
+                                   keywords)
 get_text_thread = get_text(session_id,
                            cookies,
                            sending_audio,
@@ -526,16 +528,16 @@ save_status_thread = save_status(sending_audio,
                                  temp_text_input,
                                  watson_text_output)
 
-session_keeper_thread.start()
-collect_audio_thread.start()
-send_audio_thread.start()
+# session_keeper_thread.start()
+# collect_audio_thread.start()
+# send_audio_thread.start()
 get_text_thread.start()
 watson_connection_thread.start()
 save_status_thread.start()
 
-session_keeper_thread.join()
-collect_audio_thread.join()
-send_audio_thread.join()
+# session_keeper_thread.join()
+# collect_audio_thread.join()
+# send_audio_thread.join()
 get_text_thread.join()
 watson_connection_thread.join()
 save_status_thread.join()
